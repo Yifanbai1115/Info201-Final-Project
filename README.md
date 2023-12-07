@@ -1,4 +1,4 @@
-# Info201-Final-Project
+# Info201-Final-Project (more detail of Structure in HTML)
 
 ## Introduction
 The NBA, celebrated globally for its unparalleled level of competition and intense rivalries, not only captivates millions of sports enthusiasts but also commands attention for its substantial player salaries. This league, renowned for showcasing some of the most talented athletes in the world, raises a fascinating question that resonates with many of us, especially those among students and teachers who are ardent followers of the NBA. The intrigue lies in understanding why these NBA players exhibit such extraordinary performances and whether their compensation truly reflects their on-court contributions.
