@@ -1,0 +1,282 @@
+---
+title: "Final Project"
+author: "Yifan Bai, Nathan Chan, Val Gao"
+date: '2023-12-06'
+output: html_document
+---
+
+```{r set up, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE, message = TRUE, warning = TRUE)
+```
+
+## Part 1 Why NBA is a competitive game
+### Load necessary libraries
+```{r}
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(readr)
+  library(dplyr)
+  library(tidyr)
+  library(broom)
+})
+```
+
+### Read data
+```{r}
+nba_data <- read_csv("all_seasons.csv")
+```
+
+### Data Observation
+```{r}
+observation_count <- nrow(nba_data)
+print(paste("Number of observations in the dataset:", observation_count))
+missing_values <- sapply(nba_data, function(x) sum(is.na(x)))
+total_missing_values <- sum(missing_values)
+print(paste("Total number of missing values in the dataset:", total_missing_values))
+```
+
+### Data Cleaning
+```{r}
+remove_outliers <- function(df, column_name) {
+  column <- df[[column_name]]
+  Q1 <- quantile(column, 0.25, na.rm = TRUE)
+  Q3 <- quantile(column, 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  df <- df %>% filter(column >= lower_bound & column <= upper_bound)
+  return(df)
+}
+
+nba_data <- remove_outliers(nba_data, "age")
+nba_data <- remove_outliers(nba_data, "player_height")
+nba_data <- remove_outliers(nba_data, "player_weight")
+nba_data <- remove_outliers(nba_data, "pts")
+nba_data <- remove_outliers(nba_data, "reb")
+nba_data <- remove_outliers(nba_data, "ast")
+nba_data <- remove_outliers(nba_data, "net_rating")
+
+nba_attributes_long <- nba_data %>%
+  select(age, player_height, player_weight) %>%
+  gather(key = "attribute", value = "value", age, player_height, player_weight)
+
+nba_long <- nba_data %>%
+  select(pts, reb, ast, net_rating) %>%
+  gather(key = "metric", value = "value", pts, reb, ast, net_rating)
+```
+
+### Making a histogram to show the distribution of Player Attributes
+```{r}
+g <- ggplot(nba_attributes_long, aes(x = value, fill = attribute)) +
+  geom_histogram(bins = 20, color = "black") +
+  facet_wrap(~ attribute, scales = "free_x") +
+  theme_minimal() +
+  labs(title = "Distribution of NBA Player Attributes (After Removing Outliers)",
+       x = "Attribute Value",
+       y = "Number of Players",
+       fill = "Attribute") +
+  scale_fill_manual(values = c("age" = "gold", "player_height" = "darkgreen", "player_weight" = "steelblue"))
+
+print(g)
+```
+
+### Making a histogram to show distribution of Various NBA player Metrics
+```{r}
+g <- ggplot(nba_long, aes(x = value, fill = metric)) +
+  geom_histogram(bins = 20, color = "black") +
+  facet_wrap(~ metric, scales = "free_x") +
+  theme_minimal() +
+  labs(title = "Distribution of Various NBA Player Metrics (After Removing Outliers)",
+       x = "Metric Value",
+       y = "Number of Players",
+       fill = "Metric")
+print(g)
+```
+
+
+## Part 2 NBA salary distribution
+### Read data 
+```{r}
+nba_salary_data <- read_csv("NBA Payroll(1990-2023).csv")
+```
+
+### Data Observations
+```{r}
+observation_count <- nrow(nba_salary_data)
+print(paste("Number of observations in the dataset:", observation_count))
+missing_values <- sapply(nba_salary_data, function(x) sum(is.na(x)))
+total_missing_values <- sum(missing_values)
+print(paste("Total number of missing values in the dataset:", total_missing_values))
+```
+
+### Data Cleaning
+```{r}
+nba_salary_data$payroll <- as.numeric(gsub("[^0-9]", "", nba_salary_data$payroll))
+nba_salary_data <- nba_salary_data %>% filter(!is.na(payroll))
+nba_salary_data$seasonStartYear <- factor(nba_salary_data$seasonStartYear, levels = unique(nba_salary_data$seasonStartYear))
+```
+
+# Create a line graph for NBA salary levels
+```{r}
+dot_salary <- ggplot(nba_salary_data, aes(x = seasonStartYear, y = payroll, fill = team)) +
+  geom_dotplot(binaxis = 'y', stackdir = 'center', dotsize = 0.7) +
+  labs(title = "NBA Salary Levels by Season",
+       x = "Season Start Year",
+       y = "Payroll ($)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+print(dot_salary)
+```
+
+
+## Part 3 NBA Players' Salary in Relation to On-Court Contributions
+### Read data
+```{r}
+nba_stats <- read_csv("NBA 2022-23 all stats with salary.csv")
+```
+
+### Data observations
+```{r}
+observation_count <- nrow(nba_stats)
+print(paste("Number of observations in the dataset:", observation_count))
+missing_values <- sapply(nba_stats, function(x) sum(is.na(x)))
+total_missing_values <- sum(missing_values)
+print(paste("Total number of missing values in the dataset:", total_missing_values))
+```
+
+### Data Cleaning
+```{r}
+nba_stats$Salary <- as.numeric(gsub("[^0-9]", "", nba_stats$Salary))
+nba_stats$MP <- as.numeric(nba_stats$MP)
+nba_stats$FG <- as.numeric(nba_stats$FG)
+
+nba_stats <- nba_stats %>% filter(!is.na(Salary), !is.na(MP), !is.na(FG))
+
+regression_mp <- lm(Salary ~ MP, data = nba_stats)
+tidy_mp <- tidy(regression_mp)
+regression_fg <- lm(Salary ~ FG, data = nba_stats)
+tidy_fg <- tidy(regression_fg)
+
+avg_salary_by_fg <- nba_stats %>%
+  group_by(FG_group = cut(FG, breaks = 12)) %>%
+  summarise(Average_Salary = mean(Salary, na.rm = TRUE))
+
+avg_salary_by_mp <- nba_stats %>%
+  group_by(MP_group = cut(MP, breaks = 48)) %>%
+  summarise(Average_Salary = mean(Salary, na.rm = TRUE))
+```
+
+### Line graph for average salary by FG range with regression line
+```{r}
+ggplot(avg_salary_by_fg, aes(x = as.numeric(as.factor(FG_group)), y = Average_Salary)) +
+  geom_line(group = 1, color = "red") +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "darkred") +
+  theme_minimal() +
+  labs(title = "Average NBA Salary by Field Goals Made Per Game",
+       x = "Field Goals Made Per Game Range",
+       y = "Average Salary ($)")
+
+```
+
+### Line graph for average salary by MP range with regression line
+```{r}
+ggplot(avg_salary_by_mp, aes(x = as.numeric(as.factor(MP_group)), y = Average_Salary)) +
+  geom_line(group = 1, color = "blue") +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "darkblue") +
+  theme_minimal() +
+  labs(title = "Average NBA Salary by Minutes Per Game",
+       x = "Minutes Per Game Range",
+       y = "Average Salary ($)")
+```
+
+
+## Structure
+### Introduction
+#### Give the context–why is this an interesting topic?
+The NBA, celebrated globally for its unparalleled level of competition and intense rivalries, not only captivates millions of sports enthusiasts but also commands attention for its substantial player salaries. This league, renowned for showcasing some of the most talented athletes in the world, raises a fascinating question that resonates with many of us, especially those among students and teachers who are ardent followers of the NBA. The intrigue lies in understanding why these NBA players exhibit such extraordinary performances and whether their compensation truly reflects their on-court contributions.
+
+#### What do we already know about this topic? This should be based on what you read from media or literature, not on what do you do below!
+For many avid fans and keen observers of the game, the NBA is not just about the excitement of basketball but also an opportunity to witness a blend of physical prowess, strategic gameplay, and the economics of sports. Prominent sports commentators and athletes frequently laud NBA players on platforms like "ESPN," "Sports Illustrated," and "The Athletic," highlighting their remarkable physical fitness and stellar performances. Their discussions often spark curiosity: Do the exorbitant salaries of NBA players genuinely align with their performance levels and physical attributes? This question, engaging not only basketball enthusiasts but also those studying the economics and dynamics of professional sports, leads to a broader exploration.
+Such endorsements from well-known figures in the sports world add an additional layer of intrigue. Can their observations and praises be quantitatively validated? Is there empirical evidence to support these claims? By analyzing data on NBA players' salaries, physical attributes, and performance metrics, we can independently verify these assertions. This study, therefore, seeks to bridge the gap between popular opinion and statistical analysis, offering an objective perspective on whether the acclaim and financial rewards bestowed upon these athletes are in line with their actual contributions on the court. Our investigation aims to illuminate the underlying correlations and provide a nuanced understanding of the dynamics at play in the high-stakes world of professional basketball.
+
+#### Explain what exactly are you doing.
+Against this backdrop, this study aims to explore the value of NBA players and the reasons behind the NBA's ability to maintain the highest level of competition and substantial salaries through multidimensional data analysis using R. Our analysis focuses on the following three questions for three members:
+
+1. How do players' physical attributes affect their performance in games, and how does this performance reflect their competitiveness in the NBA? (Part 1)
+
+2. What are the distribution and trends of salaries in the league? (Part 2)
+
+3. Does players' compensation correlate with their minutes per game and actual scoring per game? (Part 3)
+
+Part 1 and Part 2 mainly utilized descriptive statistical methods, creating visualized histograms and dot graphs. Part 3 employed regression analysis to explore the relationship, resulting in line graphs.
+
+#### Explain why is it interesting–why should someone care? why should someone read your report?
+Ever wondered what sets the NBA apart, making it a magnet for millions worldwide? This report is like a backstage pass to the high-octane world of professional basketball. It's not just about the slam dunks and buzzer-beaters; it's a deep dive into the 'whys' and 'hows' of the game. Imagine sitting down with a stats sheet that tells you more than just numbers – it tells stories. Why should someone care? Because this isn't just a report; it's a journey into understanding the heart and soul of the NBA – its players.Picture this: you’re watching an NBA game, cheering for your favorite player, and a question pops up – "Is this player really worth their multi-million dollar salary?" This report is your chance to find out. We're going beyond the typical banter of sports commentators and taking a data-driven look at what's happening on the court. It's like having a sports detective lens to see if those eye-popping salaries really match up with how players run, jump, and score. It's for anyone who's ever debated a player's worth over game night snacks or pondered over stats while watching a match.
+
+Why read this report? Because it's about connecting dots between the thrill of the game and the nitty-gritty of numbers. It's for the fan who yells at the TV screen, the fantasy league enthusiast strategizing their next move, and the casual viewer who wonders what the fuss is all about. This report brings to the table a fun, number-crunching way to see if the giants of the game truly stand tall – not just in inches and points, but in dollars and sense.And if you're someone who loves a good debate about sports, economics, or just enjoys unraveling mysteries with stats and graphs, this report is your playground. It’s not just about basketball; it’s about the stories behind the stats and the faces behind the figures. So, whether you're a die-hard NBA aficionado or just someone who appreciates a good sports tale, this report has something for you – insights wrapped in excitement, served with a side of data.
+
+
+### Explain your Data(I combine some questions)
+#### 2.1 Reasons for Dataset Selection
+- Dataset 1- all_seasons.csv (Part 1): We selected datasets containing players' physical attributes (such as age, height, and weight) affect their performance in games and their performance metrics to explore how game performance indicators (such as 'points scored per gam'e (PTS), 'rebounds' (REB), and 'assists' (AST)) relate to the competitiveness of the NBA. These indicators quantify players' contributions on the court and help us understand which performance metrics are key to the NBA's competitiveness.
+- Dataset 2- NBA Payroll(1990-2023).csv(Part 2): We chose datasets containing players' physical attribute data to assess how age (Age), height (Player Height), and weight (Player Weight) affect players' performance and competitiveness in the NBA.
+- Dataset 3-NBA 2022-23 all stats with salary.csv (Part 3): We selected datasets containing players' salary information to explore whether their compensation aligns with their on-court performance (such as average minutes per game (MP) and actual scoring per game (FG)).
+
+#### 2.2 Data Source and Collection
+The data used were collected and compiled by professional data analysts from official NBA statistics and third-party sports analysis organizations. We collected them from the Kaggle and search them based on the most recent dataset. They are three things regarding to the dataset. Missing Data: The dataset contains instances of missing values, particularly in performance-related metrics such as points, rebounds, and assists. The absence of this information hinders a comprehensive understanding of player contributions and may introduce bias in the analysis. Outliers: The presence of outliers in both personal attributes and performance metrics poses a challenge. Outliers can skew statistical measures and lead to inaccurate assessments of central tendencies. Implementing appropriate outlier detection and handling mechanisms is essential for mitigating this issue. Data Consistency: Inconsistencies in data formatting, such as variations in date formats or inconsistent use of units, can affect the accuracy of calculations and visualizations. Standardizing data formats ensures uniformity and enhances the reliability of the analysis.
+
+#### 2.3 Data Usage Permissions
+All of these datasets are publicly available, although some data of salaries may be restricted to non-commercial or academic research purposes. Some datasets may have restrictions on commercial use, limiting their application for non-commercial or research purposes only. Commercial use might require separate permissions or licensing agreements. To obtain accurate and up-to-date information regarding the data usage permissions for the NBA dataset or any other specific dataset, we checked the official documentation provided by the data source or organization distributing the data. This information is typically available on the dataset's website or platform. Additionally, reaching out to the data provider directly can clarify any questions regarding data usage permissions.
+
+#### 2.4 Content and Quality Issues of the Dataset
+The dataset detailed players' game performance (such as points scored, rebounds, and assists) , physical attributes (such as age, height, and weight) and salaris. During data processing, we noted some missing values and outliers in the dataset and took appropriate cleansing measures. For instance, in the all_seasons dataset, there are some data where the number of seasons is either 0 or labeled as 'Undrafted'. Similarly, in both the all_seasons and the NBA 2022-23 all stats with salary datasets, there are instances where some players' on-court statistics are excessively high or low due to their performance in a single season.
+
+#### 2.5 Final Dataset Description
+- Dataset 1- all_seasons.csv (Part 1): Accoring to the output of 'str(nba_data)', each row in the dataset represents a player's seasonal performance, providing an in-depth understanding of NBA players' performance.Number of observations in the dataset: 12735.The final dataset includes cleaned seasonal statistical data of players, focusing on performance indicators including net rating(net_rating), points per game (PTS), rebounds (REB), and assists (AST). Total number of missing values in the dataset: 5.
+- Dataset 2- NBA Payroll(1990-2023).csv(Part 2): Accoring to the results of 'str(nba_salary_data)', each row in the dataset represents the payroll information for a specific NBA team in a given season.Number of observations in the dataset: 966.The final dataset contains players' physical attributes, such as age (Age), height (Player Height), and weight (Player Weight). This data helps us analyze how physical conditions impact players' careers and performance.Total number of missing values in the dataset: 0.
+- Dataset 3-NBA 2022-23 all stats with salary.csv (Part 3): Accoring to the output of 'str(nba_stats)', each row in the dataset represents the individual season statistics and salary details of an NBA player. Number of observations in the dataset: 467. The dataset focuses on players' salary information and its association with performance indicators, so we select players' salaries (Salary), average minutes per game (MP), and average field goals per game (FG). Total number of missing values in the dataset: 45.
+
+
+### Discuss your methods(Some questions is combined)
+
+#### 3.1 Methods in Part 1
+3.1 Methods in Part 1
+In Part 1 of our study, we focused on two main aspects: the physical attributes of NBA players and their various performance metrics. Our data processing approach was methodical and aimed at ensuring accuracy and relevance in our analysis.
+
+1.Personal Attributes Analysis
+In the first part of our study, we concentrated on analyzing the personal attributes of NBA players, such as age, height, and weight. We started by loading the data from 'all_seasons.csv' and used functions like str() for an initial overview, identifying the number of observations and assessing missing values. To ensure the accuracy of our findings, we applied the Interquartile Range (IQR) method to remove outliers from these attributes. After this crucial data cleansing step, we reshaped the data using the gather function, allowing us to effectively compare and visualize these attributes. The final step involved creating facet histograms with ggplot2, enhancing our analysis with a visually appealing representation of the distribution of players' physical attributes.
+
+2.Performance Metrics Analysis
+For the performance metrics analysis, we reloaded the 'all_seasons.csv' dataset to focus on key performance indicators such as points scored (pts), rebounds (reb), assists (ast), and net rating (net_rating). Following a similar process as with personal attributes, we used the IQR method to eliminate outliers from these metrics. This step was essential for maintaining data consistency and reliability. We then reshaped this performance data into a long format, enabling us to create facet histograms that visually compare the distribution of these metrics. These histograms, plotted using ggplot2, provided an insightful and clear depiction of the performance standards of NBA players, adding depth to our analysis of their competitiveness.
+
+#### 3.2 Methods in Part 2
+In Part 2 of our study, focusing on NBA salary distribution, we began with a detailed description and cleaning of our data. Utilizing functions like str(), we gained insights into the structure of our dataset, including the total number of observations and a preliminary view of the variables. This step was crucial for ensuring the completeness and accuracy of our analysis, especially as we calculated the total number of missing values within the dataset. The central aspect of our data processing involved transforming the 'payroll' column. By applying the gsub function, we efficiently removed non-numeric characters from the payroll data, converting it into a numeric format essential for our analysis. To maintain the integrity of our study, we filtered out rows with missing values in the 'payroll' column. Further, to facilitate our examination of salary trends over time, we transformed the 'seasonStartYear' column into a categorical variable using the factor function. This adjustment was vital for our visual representation, ensuring that the years were treated as distinct categories. Finally, for the visualization aspect, we utilized the ggplot2 package to create dot plots, a method that effectively showcased the trends and variations in salary distribution across different seasons. These dot plots, enhanced with a minimalistic theme and strategically rotated x-axis labels, provided a clear and engaging depiction of the evolution of NBA salaries over time.
+
+#### 3.3 Methods in Part 3
+In Part 3, we investigated the relationship between NBA players' salaries and their on-court contributions, specifically focusing on 'average minutes per game' (MP) and 'average field goals per game' (FG). Our initial step involved processing the dataset containing 'players' salaries' (Salary), 'average minutes per game' (MP), and 'average field goals per game' (FG). We converted these key variables into numeric form using the gsub function to remove non-numeric characters, followed by cleaning the data to eliminate missing values.
+
+To analyze the relationship between salary and performance indicators, we utilized two distinct approaches:
+
+1.Linear Regression Analysis: We applied linear regression models to understand the association between players' salaries and their performance metrics (MP and FG). This approach was critical for identifying potential trends and quantifying the strength and direction of the relationships between salary and performance indicators.
+
+2.Aggregation and Line Graphs:For 'MP', we grouped the data by 'MP' and calculated the mean 'Salary' for each group. This aggregation provided us with a clear understanding of how average salaries vary with different levels of on-court playtime.
+Similarly, for 'FG', we grouped players based on their 'FG' and calculated the mean 'Salary' for these groups. This helped in assessing how scoring efficiency impacts players' compensation.
+After aggregating the data, we used ggplot2 to create line graphs for both 'MP' and 'FG'. These line graphs visually depicted the relationship between the average salary and the grouped performance metrics. By including both points (using geom_point()) and lines (using geom_line()), we offered a comprehensive view of the average salary trends across different performance levels.
+The combination of linear regression and line graphs provided a multi-faceted understanding of how NBA players' salaries correlate with their on-court contributions. This analysis not only highlighted the general trends but also allowed us to explore the nuances and variations in salary distribution relative to specific performance metrics.
+
+### Talk about your results
+The result for the first question(Why NBA is a competitive game) is showing by two histograms. It shows how comoetitive game the NBA is by looking at the physical attributes of NBA players and the players' average age, height, and weight. It indicates that the age is distributed throughout the younger age(20 to 30 years old), which they full of energy and talents. The height is definitely higher than the normal people, which the NBA players are distributed from 190 to 210 cm. According to the latest CDC stats, these are the average heights for U.S. adult men based on age: Ages 20 to 39: 176.1 centimeters, which the NBA players's height is more than the the average heights for U.S. adult men. Also, the NBA players' height are distributed from 90 to 110 kg. The average men weight is about 80kg, which the NBA players' height is more than the average men weight. After that, we did a Performance Metrics Analysis to show how does this performance reflect their competitiveness in the NBA. Both assist, rebound, and points are right-skewed distribution, which means it is pretty hard to perform well in the NBA seasons. It defines how hard the NBA game is, which concluded that NBA is a competitive game. The result for the second question(What are the distribution and trends of salaries in the league?) is showing by a dot graph. Our examination commenced by dissecting salary data across different seasons, unraveling how player compensation has evolved. A dot graph dynamically visualized these temporal trends, illustrating the changing landscape of NBA salaries over several decades. The clear upward trajectory depicted in the graph showcases a consistent and substantial increase in salaries over time. The result for the third question(Does players' compensation correlate with their minutes per game and actual scoring per game?) is showing by two line graphs. The first line graph tells us that the more salary the players get, the more Field Goals Made Per Game Range they would be made. It is a positive correlation.The second line graph tells us that the more salary the players get, the more Minutes Per Game they need to play. These two line graphs depict the condition that they players get more salary needs more contributuon to the team, if they do not play well and play lots of time, then the effect are not equal to the amount of money. This vividly shows us that the combination of linear regression and line graphs provided a multi-faceted understanding of how NBA players' salaries correlate with their on-court contributions in hope to see wethether a new player can fit into the NBA leage
+
+### Discuss your findings
+#### what do the results tell you regarding of your question you asked in introduction, or about the story line you want to focus on?
+For the second question, several factors contribute to the steady climb in NBA salaries. The league's global expansion, increased media rights deals, and the surge in commercial partnerships have substantially augmented revenue streams. As the economic pie expands, players' earnings have mirrored this growth, reflecting the evolving economics of the sports industry. The analysis of NBA salaries through the lens of time unravels a story of remarkable growth and financial prosperity. The temporal trends depicted in our line graph underscore the league's economic ascent and the increasing value placed on the contributions of basketball professionals. As the NBA continues to evolve, understanding these historical salary dynamics is paramount for shaping future strategies and navigating the ever-changing landscape of professional basketball.Collectively, these graphs paint a comprehensive picture of the intricate balance between player salaries and on-court contributions. While the positive correlations imply that higher salaries are associated with increased scoring and playing time, the nuances within these relationships become apparent. It becomes evident that the financial reward is optimized when players not only log extended minutes but also deliver impactful performances during that time. For team management, these insights are pivotal in decision-making processes. The positive correlations underscore the investment in players who exhibit both scoring prowess and the ability to handle significant playing time. However, a thoughtful approach is essential, as the impact of extended playing time on overall team performance should be carefully weighed against individual contributions.
+
+#### What are the limitations–how far do you think you can extend your claims or story?
+The limitation we might be having is Team Affiliations and Compensation, which is lack of each team analysis. It only focus on the whole NBA league, fotgetting to do the analysis on each team. It requires lots of effort, which can be set up as our group's future work.Our study primarily focuses on establishing correlations between player salaries and performance metrics. Correlation does not imply causation, and various confounding factors may influence these relationships. External elements such as team strategy, coaching styles, and player dynamics could contribute to the observed patterns.Each NBA player is a unique entity with distinct skills, playing styles, and career trajectories. While our analysis identifies general trends, applying these findings uniformly to all players may oversimplify the nuanced factors influencing individual compensation.
+
+#### Give directions for future work–what analysis/data you might need to extend your story further?
+Our analytical approach, combining linear regression models with visually compelling histograms, dot graph, and line graphs, sheds light on the intricate dynamics between NBA salaries and on-court contributions. This nuanced understanding provides stakeholders with valuable insights for strategic decision-making, particularly in assessing the value derived from player compensation in relation to their performance metrics.For future, we could get more performance metrics: Our study focuses on a subset of performance metrics (MP and FG) to assess player contributions. Additional metrics, such as advanced analytics, defensive capabilities, and team dynamics, contribute to a comprehensive understanding of player value. Omitting these factors limits the depth of our claims. They should also be considering in the future work and analysis. While our analysis provides valuable insights within its defined scope, the outlined limitations underscore the need for a nuanced interpretation. Extending our claims beyond the identified boundaries should be approached with an awareness of these constraints and a consideration of the broader context in which NBA dynamics unfold.
+
+### At the end, it should include a summary with a takeaway message.
+In conclusion, the analysis of NBA salaries through the lens of time unravels a story of remarkable growth and financial prosperity. our comprehensive analysis of NBA player salaries unearthed multifaceted trends and unveiled the intricate interplay of factors shaping compensation. From the positional nuances and team affiliations to the correlation between performance metrics and salaries, our study provides a holistic perspective on the financial dynamics within the league. These insights not only contribute to the understanding of player compensation but also offer valuable information for players, teams, and enthusiasts alike as they navigate the intricate landscape of professional basketball.The temporal trends depicted in our graphs underscore the league's economic ascent and the increasing value placed on the contributions of basketball professionals. As the NBA continues to evolve, understanding these historical salary dynamics is paramount for shaping future strategies and navigating the ever-changing landscape of professional basketball.
