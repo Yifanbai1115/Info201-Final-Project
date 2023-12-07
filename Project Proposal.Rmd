@@ -1,0 +1,48 @@
+---
+title: "Analysis of NBA Salary and Performance"
+author: "Yifan Bai"
+date: '2023-11-15'
+output: html_document
+---
+
+## Data and Audience
+
+### Who is your target audience? Depending on the domain of your data, there may be a variety of audiences interested in using the dataset. You should home in on one of these audiences.
+The first dataset we are going to use is NBA Player Salaries (2022-23 Season) from Kaggle. It contains different Player Name, their Salary in US Dollars, Position of Player, Team(s) Played for in 2022-23 Season, Minutes Per Game, and Field Goals Made Per Game. The second dataset we are going to use is NBA Payroll(1990-2023).csv from Kaggle. It contains Team Name, Season Year, Salary Cap, and Inflation Adjusted Salary Cap.
+
+### What are the datasets you’ll be working with? Please include background on who collected the data, how you can access it, and any additional information we should know about how this data came to be.
+We gathered together to collect the data from NBA (2022-23 Season). We went to the Kaggle Website and find the most recent NBA (2022-23 Season) that related to the salary and its contribution to their team. The purpose is to show the NBA fans about a comprehensive resource for understanding the performance and financial aspects of professional basketball players.
+
+### Provide a brief background: what do we already know about this topic? Why is it interesting? What do you want to add to what already exists?
+What we already know about this topic are the salary disparities, we know that NBA players' pay is known to vary greatly depending on a number of factors, including experience, talent, marketability, and performance. The greatest earnings are frequently paid to superstar athletes, while less well-known or productive athletes receive lower salaries. We also know their performance metrics, which are used to assess a player's impact on their team's performance, including points, assists, steals, rebounds, and blocks. It is the usual method to evaluate a player's performance using these criteria, which will also affect their salary. Analyzing the relationship between NBA player salaries and performance is interesting because it delves at the economics of professional sports, such as how teams utilize financial resources to build competitive lineups. We will want to add some market dynamics. This will help investigate the impact of market size, endorsements, and social media existence on player compensation.
+
+
+### What do you want to tell to your audience based on the data? Please list a few specific questions or other potential story lines you want to explore. 
+The target audience is people who loves basketball or love watching basketball game in professional game, like NBA. They probably know not much about the data. Therefore, I need to explain them that not only showing the salary cap for each year, but also doing the insights into the income distribution of NBA players, helping fans and analysts understand the financial side of professional basketball. They probably know the name, team name, and roughly performance of each players, which I do not need to explain them. 
+
+### What do you want to explain to your audience? Provide research questions you want to answer. Why do you think your audience might be interested in answers?
+First, I want to explain the evolution of the times of salary cap for each team, which give my audience a overview of situation their favorite team faced about salary, and to make adjustments if necessary. The second research question is how to make a comprehensive resource for understanding the performance(Minutes Per Game) and financial aspects of professional basketball players by checking if they really fit to its salary amount. Third, I would make an analysis on the relationship between Field Goals Made Per Game and salary to check if they are positively related to each other. The reason I think my audience might be interested in answers is that they can evaluate player performance in correlation with their earnings, identifying players who provide strong value for their salaries.
+
+## Technical Description
+
+### How will you be reading in your data (i.e., are you using an API, or is it a static .csv/.json file)?
+Our data are in csv files.
+
+### What kind of data processing (reshaping, reformatting, etc.) will you need to do to your data?
+The kind of data processing is selecting, reformatting, and comparing that we need to do to our data.
+
+### What tools do you need to process the dataset? Just dplyr or do you also need something else?
+I think we need to use dplyr, readr, and stringr for now. If we learned somethings else in the following week, we probably need to have more tools that need to the dataset.
+
+### What kind of visualizations (tables, graphs) do you envision? What kind of visualization tools do you need?
+The kind of visualizations we envision are bar chart, scatter plots, and box plots. The kind of visualization tools we need are ggplot2 and shiny.
+
+### What questions, if any, will you be answering with statistical analysis/machine learning?
+The questions will be answering with statistical analysis/machine learning can be what is the prediction of future salary cap based on 1990 - 2023 salary cap. Also, the question can be what's the distribution of players' salary in 2022 - 2023 NBA season.
+
+### What major challenges do you anticipate?
+The major challenge is to correctly place the different kinds of variables in the website to make it appear aesthetically pleasing. Although we have already found a good and proper dataset to help us better do the analysis, this process of finding is quite hard too. Moreover, the choice of using types of visualization tools is another challenge we anticipate.
+
+
+
+
